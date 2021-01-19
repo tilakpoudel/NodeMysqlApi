@@ -1,4 +1,5 @@
 "use strict";
+const { request } = require("express");
 const Validator = require("fastest-validator");
 const models = require("../models");
 
@@ -10,8 +11,9 @@ function save(req, res) {
     context: req.body.context,
     imageUrl: req.body.imageUrl,
     categoryId: req.body.categoryId,
-    userId: 1,
+    userId: req.userData.userId,
   };
+  console.log(req.userData);
   const schema = {
     title: { type: "string", optional: false, max: "100" },
     context: { type: "string", optional: false, max: "500" },
@@ -27,19 +29,28 @@ function save(req, res) {
     });
   }
 
-  models.Post.create(post)
-    .then((result) => {
-      res.status(201).json({
-        message: "Post created Successfully",
-        post: result,
+  // check categoryId is valid before sending request
+  models.Category.findByPk(req.body.categoryId).then((result) => {
+    if (result != null) {
+      models.Post.create(post)
+        .then((result) => {
+          res.status(201).json({
+            message: "Post created Successfully",
+            post: result,
+          });
+        })
+        .catch((error) => {
+          res.status(500).json({
+            message: "Something went wrong",
+            error: error,
+          });
+        });
+    } else {
+      res.status(400).json({
+        message: "Invalid Category Id",
       });
-    })
-    .catch((error) => {
-      res.status(500).json({
-        message: "Something went wrong",
-        error: error,
-      });
-    });
+    }
+  });
 }
 
 // show post with id
@@ -88,7 +99,7 @@ function update(req, res) {
     categoryId: req.body.categoryId,
   };
 
-  const userId = 1;
+  const userId = req.userData.userId,
 
   const schema = {
     title: { type: "string", optional: false, max: "100" },
@@ -104,24 +115,34 @@ function update(req, res) {
       errors: validationResponse,
     });
   }
-  models.Post.update(updatedPost, { where: { id: id, userId: userId } })
-    .then((result) => {
-      res.status(200).json({
-        message: "Post updated successfuly",
-        post: updatedPost,
+
+  // check categoryId is valid before sending request
+  models.Category.findByPk(req.body.categoryId).then((result) => {
+    if (result != null) {
+      models.Post.update(updatedPost, { where: { id: id, userId: userId } })
+        .then((result) => {
+          res.status(200).json({
+            message: "Post updated successfuly",
+            post: updatedPost,
+          });
+        })
+        .catch((error) => {
+          res.status(500).json({
+            message: "Something went wrong",
+            error: error,
+          });
+        });
+    } else {
+      res.status(400).json({
+        message: "Invalid Category Id",
       });
-    })
-    .catch((error) => {
-      res.status(500).json({
-        message: "Something went wrong",
-        error: error,
-      });
-    });
+    }
+  });
 }
 
 function destroy(req, res) {
   const id = req.params.id;
-  const userId = 1;
+  const userId = req.userData.userId;
   models.Post.destroy({ where: { id: id, userId: userId } })
     .then((result) => {
       res.status(200).json({
